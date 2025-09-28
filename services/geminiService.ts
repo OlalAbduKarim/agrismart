@@ -1,13 +1,14 @@
-
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 
 const API_KEY = process.env.API_KEY;
+let ai: GoogleGenAI | null = null;
 
-if (!API_KEY) {
+if (API_KEY) {
+  ai = new GoogleGenAI({ apiKey: API_KEY });
+} else {
   console.warn("API_KEY environment variable not set. AI Guide will not function.");
 }
 
-const ai = new GoogleGenAI({ apiKey: API_KEY! });
 
 const fileToGenerativePart = async (file: File) => {
   const base64EncodedDataPromise = new Promise<string>((resolve) => {
@@ -21,7 +22,7 @@ const fileToGenerativePart = async (file: File) => {
 };
 
 export const getAIGuideResponse = async (prompt: string, image?: File): Promise<string> => {
-  if (!API_KEY) {
+  if (!ai) {
     return "The AI Guide is currently unavailable. The API Key is missing.";
   }
 

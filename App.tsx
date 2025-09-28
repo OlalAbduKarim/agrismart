@@ -13,6 +13,7 @@ import OTPScreen from './screens/onboarding/OTPScreen';
 import ProfileCompletionScreen from './screens/onboarding/ProfileCompletionScreen';
 import MessagesScreen from './screens/MessagesScreen';
 import ChatScreen from './screens/ChatScreen';
+import EditProfileScreen from './screens/EditProfileScreen';
 
 export type Tab = 'Home' | 'Marketplace' | 'Rent Land' | 'Messages' | 'AI Guide' | 'Profile';
 
@@ -27,6 +28,7 @@ const App: React.FC = () => {
   const [onboardingStep, setOnboardingStep] = useState(0); // 0: Welcome, 1: Role, 2: Phone, 3: OTP, 4: Profile, 5: App
   const [userProfile, setUserProfile] = useState({ name: '', photo: '', district: '' });
   const [activeChat, setActiveChat] = useState<ChatDetails | null>(null);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
 
   useEffect(() => {
     // Simulate checking if user is already onboarded
@@ -53,6 +55,12 @@ const App: React.FC = () => {
   
   const handleCloseChat = () => {
     setActiveChat(null);
+  };
+  
+  const handleUpdateProfile = (updatedProfile: { name: string; photo: string; district: string; }) => {
+    localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
+    setUserProfile(updatedProfile);
+    setIsEditingProfile(false);
   };
 
   const renderOnboarding = () => {
@@ -89,7 +97,7 @@ const App: React.FC = () => {
           localStorage.clear();
           setOnboardingStep(0);
           setActiveTab('Home');
-        }}/>;
+        }} onEditProfile={() => setIsEditingProfile(true)} />;
       default:
         return <HomeScreen profile={userProfile} onNavigate={setActiveTab} onStartChat={handleStartChat} />;
     }
@@ -100,6 +108,12 @@ const App: React.FC = () => {
       <div className="relative w-full max-w-md h-full bg-background flex flex-col shadow-lg">
         {onboardingStep < 5 ? (
           renderOnboarding()
+        ) : isEditingProfile ? (
+            <EditProfileScreen
+              profile={userProfile}
+              onSave={handleUpdateProfile}
+              onCancel={() => setIsEditingProfile(false)}
+            />
         ) : activeChat ? (
            <ChatScreen 
               userName={activeChat.userName}

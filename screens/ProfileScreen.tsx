@@ -4,6 +4,7 @@ import React from 'react';
 interface ProfileScreenProps {
   profile: { name: string; photo: string; district: string; };
   onLogout: () => void;
+  onEditProfile: () => void;
 }
 
 const ProfileMenuItem: React.FC<{icon: string, label: string, onClick?: () => void}> = ({ icon, label, onClick }) => (
@@ -14,7 +15,7 @@ const ProfileMenuItem: React.FC<{icon: string, label: string, onClick?: () => vo
     </button>
 )
 
-const ProfileScreen: React.FC<ProfileScreenProps> = ({ profile, onLogout }) => {
+const ProfileScreen: React.FC<ProfileScreenProps> = ({ profile, onLogout, onEditProfile }) => {
   return (
     <div className="bg-background min-h-full">
       <div className="p-4 bg-surface flex flex-col items-center pb-6 border-b">
@@ -25,7 +26,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ profile, onLogout }) => {
       
       <div className="py-4">
         <div className="bg-surface rounded-lg mx-4 shadow-sm">
-            <ProfileMenuItem icon="account_circle" label="Edit Profile" />
+            <ProfileMenuItem icon="account_circle" label="Edit Profile" onClick={onEditProfile} />
             <div className="border-t border-gray-100 mx-4"></div>
             <ProfileMenuItem icon="notifications" label="Notifications" />
             <div className="border-t border-gray-100 mx-4"></div>
