@@ -1,0 +1,7 @@
+{
+  "name": "Agrismart Uganda",
+  "description": "An agricultural platform for Uganda connecting land, people, and goods. It simplifies land rental, facilitates buying and selling of agricultural products, and offers an AI-powered guide for farmers.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
