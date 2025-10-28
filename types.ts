@@ -1,4 +1,3 @@
-
 export interface Listing {
   id: number;
   type: 'land' | 'product';
@@ -10,6 +9,9 @@ export interface Listing {
   sellerPhoto: string;
   size?: string; // acres for land
   rating?: number;
+  landUse?: 'Arable' | 'Grazing' | 'Commercial' | 'Mixed-use';
+  soilType?: 'Loam' | 'Clay' | 'Sandy' | 'Black Cotton';
+  waterSource?: boolean;
 }
 
 export interface ChatMessage {
@@ -47,4 +49,15 @@ export interface DirectMessage {
   text: string;
   timestamp: string;
   senderId: 'me' | 'other';
+}
+
+export interface RegisteredLand {
+  id: number;
+  title: string;
+  location: string;
+  image: string;
+  size: string; // acres
+  ownerName: string;
+  ownerNIN: string; // National Identification Number
+  isVerified: boolean;
 }

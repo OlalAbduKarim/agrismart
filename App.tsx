@@ -14,8 +14,10 @@ import ProfileCompletionScreen from './screens/onboarding/ProfileCompletionScree
 import MessagesScreen from './screens/MessagesScreen';
 import ChatScreen from './screens/ChatScreen';
 import EditProfileScreen from './screens/EditProfileScreen';
+import LandRegistryScreen from './screens/LandRegistryScreen';
+import RegisterLandFormScreen from './screens/RegisterLandFormScreen';
 
-export type Tab = 'Home' | 'Marketplace' | 'Rent Land' | 'Messages' | 'AI Guide' | 'Profile';
+export type Tab = 'Home' | 'Marketplace' | 'Rent Land' | 'Land Registry' | 'Messages' | 'AI Guide' | 'Profile';
 
 export interface ChatDetails {
   userName: string;
@@ -29,6 +31,7 @@ const App: React.FC = () => {
   const [userProfile, setUserProfile] = useState({ name: '', photo: '', district: '' });
   const [activeChat, setActiveChat] = useState<ChatDetails | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isRegisteringLand, setIsRegisteringLand] = useState(false);
 
   useEffect(() => {
     // Simulate checking if user is already onboarded
@@ -88,6 +91,8 @@ const App: React.FC = () => {
         return <MarketplaceScreen onStartChat={handleStartChat} />;
       case 'Rent Land':
         return <RentLandScreen onStartChat={handleStartChat} />;
+      case 'Land Registry':
+        return <LandRegistryScreen onRegisterLand={() => setIsRegisteringLand(true)} />;
       case 'Messages':
         return <MessagesScreen onStartChat={handleStartChat} />;
       case 'AI Guide':
@@ -103,6 +108,13 @@ const App: React.FC = () => {
     }
   };
 
+  const handleCompleteRegistration = () => {
+    // In a real app, you might show a success toast message.
+    setIsRegisteringLand(false);
+    // Optionally navigate to the land registry to see the (pending) submission
+    setActiveTab('Land Registry');
+  }
+
   return (
     <div className="h-screen w-screen bg-background font-open-sans text-text-primary flex flex-col items-center">
       <div className="relative w-full max-w-md h-full bg-background flex flex-col shadow-lg">
@@ -113,6 +125,11 @@ const App: React.FC = () => {
               profile={userProfile}
               onSave={handleUpdateProfile}
               onCancel={() => setIsEditingProfile(false)}
+            />
+        ) : isRegisteringLand ? (
+            <RegisterLandFormScreen
+              onComplete={handleCompleteRegistration}
+              onCancel={() => setIsRegisteringLand(false)}
             />
         ) : activeChat ? (
            <ChatScreen 

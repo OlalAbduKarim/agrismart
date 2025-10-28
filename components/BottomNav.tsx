@@ -33,8 +33,8 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
     { label: 'Home', icon: 'home' },
     { label: 'Marketplace', icon: 'storefront' },
     { label: 'Rent Land', icon: 'landscape' },
+    { label: 'Land Registry', icon: 'gite' },
     { label: 'Messages', icon: 'chat_bubble_outline' },
-    { label: 'AI Guide', icon: 'psychology' },
     { label: 'Profile', icon: 'person' },
   ];
 
