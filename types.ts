@@ -12,6 +12,9 @@ export interface Listing {
   landUse?: 'Arable' | 'Grazing' | 'Commercial' | 'Mixed-use';
   soilType?: 'Loam' | 'Clay' | 'Sandy' | 'Black Cotton';
   waterSource?: boolean;
+  lat?: number;
+  lng?: number;
+  aiTips?: string[];
 }
 
 export interface ChatMessage {

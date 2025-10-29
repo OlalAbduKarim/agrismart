@@ -1,4 +1,3 @@
-
 import React from 'react';
 import type { Tab } from '../App';
 
@@ -16,7 +15,7 @@ interface NavItemProps {
 
 const NavItem: React.FC<NavItemProps> = ({ label, icon, isActive, onClick }) => {
   const activeColor = 'text-primary';
-  const inactiveColor = 'text-text-secondary';
+  const inactiveColor = 'text-text-secondary dark:text-gray-400';
   return (
     <button
       onClick={onClick}
@@ -39,7 +38,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
   ];
 
   return (
-    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md h-16 bg-surface border-t border-gray-200 flex justify-around items-center shadow-lg">
+    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md h-16 bg-surface dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex justify-around items-center shadow-lg">
       {navItems.map((item) => (
         <NavItem
           key={item.label}

@@ -1,7 +1,29 @@
-
 import React, { useState, useRef, useEffect } from 'react';
-import { getAIGuideResponse } from '../services/geminiService';
+import { getAIGuideResponseStream } from '../services/geminiService';
 import type { ChatMessage } from '../types';
+
+const trendingTips = [
+    {
+        icon: 'wb_sunny',
+        title: 'Dry Season Prep',
+        prompt: 'How should I prepare my farm for the upcoming dry season in Uganda?'
+    },
+    {
+        icon: 'bug_report',
+        title: 'Pest Control',
+        prompt: 'What are common pests for maize right now and how do I control them?'
+    },
+    {
+        icon: 'water_drop',
+        title: 'Irrigation Tips',
+        prompt: 'What are some water-saving irrigation techniques for vegetables?'
+    },
+    {
+        icon: 'inventory_2',
+        title: 'Harvest Storage',
+        prompt: 'Tell me the best practices for storing harvested beans to prevent spoilage.'
+    },
+];
 
 const AIGuideScreen: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -21,6 +43,39 @@ const AIGuideScreen: React.FC = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const sendMessageAndStreamResponse = async (prompt: string, image?: File) => {
+    setIsLoading(true);
+    try {
+      const stream = getAIGuideResponseStream(prompt, image);
+      
+      let firstChunk = true;
+      for await (const chunk of stream) {
+        if (firstChunk) {
+          setIsLoading(false);
+          setMessages((prev) => [...prev, { role: 'model', parts: [{ text: chunk }] }]);
+          firstChunk = false;
+        } else {
+          setMessages(prev => {
+            const newMessages = [...prev];
+            const lastMessage = newMessages[newMessages.length - 1];
+            if (lastMessage && lastMessage.role === 'model') {
+              lastMessage.parts[0].text += chunk;
+            }
+            return newMessages;
+          });
+        }
+      }
+    } catch (error) {
+       const errorMessage: ChatMessage = {
+        role: 'model',
+        parts: [{ text: 'Sorry, something went wrong. Please check your connection and try again.' }],
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSend = async () => {
     if (!input.trim() && !imageFile) return;
 
@@ -30,44 +85,23 @@ const AIGuideScreen: React.FC = () => {
       image: imagePreview || undefined,
     };
     setMessages((prev) => [...prev, userMessage]);
-    setIsLoading(true);
+    
+    const currentInput = input;
+    const currentImageFile = imageFile;
+
     setInput('');
     setImageFile(null);
     setImagePreview(null);
     
-    try {
-      const responseText = await getAIGuideResponse(input, imageFile || undefined);
-      const modelMessage: ChatMessage = {
-        role: 'model',
-        parts: [{ text: responseText }],
-      };
-      setMessages((prev) => [...prev, modelMessage]);
-    } catch (error) {
-       const errorMessage: ChatMessage = {
-        role: 'model',
-        parts: [{ text: 'Sorry, something went wrong. Please check your connection and try again.' }],
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-        setIsLoading(false);
-    }
+    await sendMessageAndStreamResponse(currentInput, currentImageFile || undefined);
   };
 
   const handleQuickQuestion = (question: string) => {
-    setInput(question);
-    // Automatically trigger send for quick questions
     const userMessage: ChatMessage = { role: 'user', parts: [{ text: question }] };
     setMessages(prev => [...prev, userMessage]);
-    setIsLoading(true);
     setInput('');
     
-    getAIGuideResponse(question).then(responseText => {
-      const modelMessage: ChatMessage = { role: 'model', parts: [{ text: responseText }] };
-      setMessages(prev => [...prev, modelMessage]);
-    }).catch(error => {
-      const errorMessage: ChatMessage = { role: 'model', parts: [{ text: 'Sorry, an error occurred.' }] };
-      setMessages(prev => [...prev, errorMessage]);
-    }).finally(() => setIsLoading(false));
+    sendMessageAndStreamResponse(question);
   }
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -107,13 +141,26 @@ const AIGuideScreen: React.FC = () => {
       </div>
 
       {messages.length <= 1 && (
-        <div className="p-4 border-t border-gray-200">
-            <p className="text-sm font-semibold text-text-secondary mb-2">Quick Questions:</p>
+        <div className="p-4 border-t border-gray-200 bg-gray-50">
+           <div className="mb-4">
+            <p className="text-sm font-semibold text-text-secondary mb-2">Seasonal Advice</p>
+            <div className="grid grid-cols-2 gap-3">
+                {trendingTips.map((tip) => (
+                    <button key={tip.title} onClick={() => handleQuickQuestion(tip.prompt)} className="flex flex-col items-start p-3 bg-surface rounded-lg shadow-sm text-left hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-primary">
+                        <span className="material-icons-outlined text-primary mb-1">{tip.icon}</span>
+                        <p className="font-semibold text-text-primary text-sm">{tip.title}</p>
+                    </button>
+                ))}
+            </div>
+        </div>
+        <div>
+            <p className="text-sm font-semibold text-text-secondary mb-2">Or ask something else:</p>
             <div className="flex flex-wrap gap-2">
                 <button onClick={() => handleQuickQuestion("What should I plant this month?")} className="px-3 py-1.5 bg-secondary/30 text-secondary-dark rounded-full text-sm">What to plant now?</button>
                 <button onClick={() => handleQuickQuestion("How to treat maize rust?")} className="px-3 py-1.5 bg-secondary/30 text-secondary-dark rounded-full text-sm">Treat maize rust</button>
                 <button onClick={() => handleQuickQuestion("Best practices for poultry farming?")} className="px-3 py-1.5 bg-secondary/30 text-secondary-dark rounded-full text-sm">Poultry tips</button>
             </div>
+        </div>
         </div>
       )}
 

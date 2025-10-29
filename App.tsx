@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import BottomNav from './components/BottomNav';
 import HomeScreen from './screens/HomeScreen';
@@ -32,6 +31,25 @@ const App: React.FC = () => {
   const [activeChat, setActiveChat] = useState<ChatDetails | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isRegisteringLand, setIsRegisteringLand] = useState(false);
+  const [theme, setTheme] = useState(() => {
+    const savedTheme = localStorage.getItem('theme');
+    const userPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    return savedTheme || (userPrefersDark ? 'dark' : 'light');
+  });
+
+  const toggleTheme = () => {
+    setTheme(prevTheme => (prevTheme === 'light' ? 'dark' : 'light'));
+  };
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
 
   useEffect(() => {
     // Simulate checking if user is already onboarded
@@ -102,7 +120,10 @@ const App: React.FC = () => {
           localStorage.clear();
           setOnboardingStep(0);
           setActiveTab('Home');
-        }} onEditProfile={() => setIsEditingProfile(true)} />;
+        }} onEditProfile={() => setIsEditingProfile(true)} 
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        />;
       default:
         return <HomeScreen profile={userProfile} onNavigate={setActiveTab} onStartChat={handleStartChat} />;
     }
@@ -116,8 +137,8 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="h-screen w-screen bg-background font-open-sans text-text-primary flex flex-col items-center">
-      <div className="relative w-full max-w-md h-full bg-background flex flex-col shadow-lg">
+    <div className="h-screen w-screen bg-background dark:bg-gray-900 font-open-sans text-text-primary dark:text-gray-200 flex flex-col items-center">
+      <div className="relative w-full max-w-md h-full bg-background dark:bg-gray-900 flex flex-col shadow-lg">
         {onboardingStep < 5 ? (
           renderOnboarding()
         ) : isEditingProfile ? (
