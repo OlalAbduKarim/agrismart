@@ -15,6 +15,8 @@ import ChatScreen from './screens/ChatScreen';
 import EditProfileScreen from './screens/EditProfileScreen';
 import LandRegistryScreen from './screens/LandRegistryScreen';
 import RegisterLandFormScreen from './screens/RegisterLandFormScreen';
+import { getWishlist, addToWishlist, removeFromWishlist } from './services/wishlistService';
+import WishlistScreen from './screens/WishlistScreen';
 
 export type Tab = 'Home' | 'Marketplace' | 'Rent Land' | 'Land Registry' | 'Messages' | 'AI Guide' | 'Profile';
 
@@ -31,6 +33,8 @@ const App: React.FC = () => {
   const [activeChat, setActiveChat] = useState<ChatDetails | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isRegisteringLand, setIsRegisteringLand] = useState(false);
+  const [wishlist, setWishlist] = useState<number[]>([]);
+  const [isViewingWishlist, setIsViewingWishlist] = useState(false);
   const [theme, setTheme] = useState(() => {
     const savedTheme = localStorage.getItem('theme');
     const userPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -61,6 +65,8 @@ const App: React.FC = () => {
         setUserProfile(JSON.parse(profile));
       }
     }
+    // Load wishlist from localStorage on initial load
+    setWishlist(getWishlist());
   }, []);
 
   const completeOnboarding = (profile: { name: string; photo: string; district: string; }) => {
@@ -84,6 +90,16 @@ const App: React.FC = () => {
     setIsEditingProfile(false);
   };
 
+  const handleToggleWishlist = (listingId: number) => {
+    setWishlist(prevWishlist => {
+      if (prevWishlist.includes(listingId)) {
+        return removeFromWishlist(listingId);
+      } else {
+        return addToWishlist(listingId);
+      }
+    });
+  };
+
   const renderOnboarding = () => {
     switch (onboardingStep) {
       case 0:
@@ -104,11 +120,11 @@ const App: React.FC = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'Home':
-        return <HomeScreen profile={userProfile} onNavigate={setActiveTab} onStartChat={handleStartChat} />;
+        return <HomeScreen profile={userProfile} onNavigate={setActiveTab} onStartChat={handleStartChat} wishlist={wishlist} onToggleWishlist={handleToggleWishlist} />;
       case 'Marketplace':
-        return <MarketplaceScreen onStartChat={handleStartChat} />;
+        return <MarketplaceScreen onStartChat={handleStartChat} wishlist={wishlist} onToggleWishlist={handleToggleWishlist} />;
       case 'Rent Land':
-        return <RentLandScreen onStartChat={handleStartChat} />;
+        return <RentLandScreen onStartChat={handleStartChat} wishlist={wishlist} onToggleWishlist={handleToggleWishlist} />;
       case 'Land Registry':
         return <LandRegistryScreen onRegisterLand={() => setIsRegisteringLand(true)} />;
       case 'Messages':
@@ -123,9 +139,10 @@ const App: React.FC = () => {
         }} onEditProfile={() => setIsEditingProfile(true)} 
         theme={theme}
         onToggleTheme={toggleTheme}
+        onViewWishlist={() => setIsViewingWishlist(true)}
         />;
       default:
-        return <HomeScreen profile={userProfile} onNavigate={setActiveTab} onStartChat={handleStartChat} />;
+        return <HomeScreen profile={userProfile} onNavigate={setActiveTab} onStartChat={handleStartChat} wishlist={wishlist} onToggleWishlist={handleToggleWishlist} />;
     }
   };
 
@@ -141,6 +158,13 @@ const App: React.FC = () => {
       <div className="relative w-full max-w-md h-full bg-background dark:bg-gray-900 flex flex-col shadow-lg">
         {onboardingStep < 5 ? (
           renderOnboarding()
+        ) : isViewingWishlist ? (
+           <WishlistScreen 
+              wishlist={wishlist}
+              onToggleWishlist={handleToggleWishlist}
+              onStartChat={handleStartChat}
+              onBack={() => setIsViewingWishlist(false)}
+           />
         ) : isEditingProfile ? (
             <EditProfileScreen
               profile={userProfile}

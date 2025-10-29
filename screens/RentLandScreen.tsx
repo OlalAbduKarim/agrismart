@@ -1,17 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import ListingCard from '../components/ListingCard';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, LayersControl, LayerGroup } from 'react-leaflet';
 import L from 'leaflet';
 import { getLandSuitabilityAnalysis, SuitabilityAnalysisResult } from '../services/geminiService';
 import type { Listing } from '../types';
 import type { ChatDetails } from '../App';
-
-const mockLand: Listing[] = [
-  { id: 1, type: 'land', title: 'Fertile Land in Mbarara', price: 'UGX 500,000', location: 'Mbarara, Kashari', image: 'https://picsum.photos/seed/land1/400/300', size: '2 Acres', seller: 'John K.', sellerPhoto: 'https://picsum.photos/seed/seller1/100', soilType: 'Loam', landUse: 'Arable', waterSource: true, lat: -0.6050, lng: 30.6552, aiTips: ['Intercropping', 'Drought-resistant crops'] },
-  { id: 2, type: 'land', title: 'Lakeside Plot', price: 'UGX 1,200,000', location: 'Wakiso, Entebbe', image: 'https://picsum.photos/seed/land2/400/300', size: '5 Acres', seller: 'Peter A.', sellerPhoto: 'https://picsum.photos/seed/seller3/100', soilType: 'Sandy', landUse: 'Commercial', waterSource: true, lat: 0.0566, lng: 32.4627, aiTips: ['Organic farming'] },
-  { id: 3, type: 'land', title: 'Rich Loam Soil', price: 'UGX 800,000', location: 'Mbale, Budadiri', image: 'https://picsum.photos/seed/land3/400/300', size: '3 Acres', seller: 'Mbale Farmers Coop', sellerPhoto: 'https://picsum.photos/seed/seller6/100', soilType: 'Loam', landUse: 'Arable', waterSource: false, lat: 1.0821, lng: 34.1759, aiTips: ['Organic farming', 'Zero tillage'] },
-  { id: 4, type: 'land', title: 'Gulu Farmland', price: 'UGX 400,000', location: 'Gulu', image: 'https://picsum.photos/seed/land4/400/300', size: '10 Acres', seller: 'David O.', sellerPhoto: 'https://picsum.photos/seed/seller9/100', soilType: 'Black Cotton', landUse: 'Grazing', waterSource: false, lat: 2.7725, lng: 32.2884, aiTips: ['Drought-resistant crops'] },
-];
+import { mockLandListings } from '../mockData';
 
 interface DisplayListing extends Listing {
     suitabilityScore?: number;
@@ -100,7 +94,7 @@ const FilterDropdown: React.FC<{
         <span className="material-icons-outlined text-base">{icon}</span>
       </button>
       {isOpen && (
-        <div className="absolute top-full mt-2 w-48 bg-surface dark:bg-gray-800 rounded-lg shadow-lg z-20 border dark:border-gray-700 py-1">
+        <div className="absolute top-full mt-2 w-48 bg-surface dark:bg-gray-800 rounded-lg shadow-lg z-50 border dark:border-gray-700 py-1">
           {options.map((option) => (
             <button
               key={option}
@@ -117,30 +111,6 @@ const FilterDropdown: React.FC<{
     </div>
   );
 };
-
-const ViewModeToggle: React.FC<{ viewMode: 'list' | 'map'; setViewMode: (mode: 'list' | 'map') => void; }> = ({ viewMode, setViewMode }) => {
-  const baseClasses = "flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:focus:ring-offset-gray-900";
-  const activeClasses = "bg-primary text-white shadow";
-  const inactiveClasses = "bg-gray-200 dark:bg-gray-700 text-text-secondary dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600";
-
-  return (
-    <div className="bg-gray-200 dark:bg-gray-700 p-1 rounded-full flex items-center">
-      <button onClick={() => setViewMode('list')} className={`${baseClasses} ${viewMode === 'list' ? activeClasses : inactiveClasses}`}>
-        <span className="material-icons-outlined text-base">view_list</span>
-        <span>List</span>
-      </button>
-      <button onClick={() => setViewMode('map')} className={`${baseClasses} ${viewMode === 'map' ? activeClasses : inactiveClasses}`}>
-        <span className="material-icons-outlined text-base">map</span>
-        <span>Map</span>
-      </button>
-    </div>
-  );
-};
-
-interface MapViewProps {
-  listings: DisplayListing[];
-  onStartChat: (details: ChatDetails) => void;
-}
 
 const getLandUseIconName = (landUse?: Listing['landUse']) => {
     switch(landUse) {
@@ -159,7 +129,7 @@ const getSuitabilityBorder = (score?: number) => {
     return 'border-red-500';
 }
 
-const getMarkerIcon = (listing: DisplayListing) => {
+const getMarkerIcon = (listing: DisplayListing, isSelected: boolean) => {
   const landUseColorMap: { [key: string]: string } = {
     'Arable': 'bg-green-600',
     'Grazing': 'bg-yellow-600',
@@ -171,6 +141,7 @@ const getMarkerIcon = (listing: DisplayListing) => {
   const colorClass = landUseColorMap[listing.landUse || 'default'] || landUseColorMap['default'];
   const hasAiTips = listing.aiTips && listing.aiTips.length > 0;
   const suitabilityBorder = getSuitabilityBorder(listing.suitabilityScore);
+  const scaleClass = isSelected ? 'scale-125 z-10' : 'hover:scale-110';
 
   const aiTipBadge = hasAiTips ? `
     <div class="absolute -top-1.5 -right-1.5 bg-secondary rounded-full w-5 h-5 flex items-center justify-center shadow-lg border-2 border-white dark:border-gray-800">
@@ -179,7 +150,7 @@ const getMarkerIcon = (listing: DisplayListing) => {
   ` : '';
 
   const html = `
-    <div class="relative transition-transform duration-200 hover:scale-110">
+    <div class="relative transition-transform duration-200 ${scaleClass}">
       <div class="w-8 h-8 rounded-full ${colorClass} border-4 ${suitabilityBorder} shadow-md flex items-center justify-center">
          <span class="material-icons-outlined text-white text-lg">${getLandUseIconName(listing.landUse)}</span>
       </div>
@@ -196,43 +167,38 @@ const getMarkerIcon = (listing: DisplayListing) => {
   });
 };
 
-const MapView: React.FC<MapViewProps> = ({ listings, onStartChat }) => {
-  const ugandaCenter: [number, number] = [1.3733, 32.2903];
-
-  return (
-    <div className="p-4">
-      <div className="map-container-wrapper rounded-2xl overflow-hidden shadow-lg">
-        <MapContainer center={ugandaCenter} zoom={7} scrollWheelZoom={true} style={{ height: '65vh', width: '100%', zIndex: 0 }}>
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          {listings.map(listing => (
-            (listing.lat && listing.lng) && (
-              <Marker key={listing.id} position={[listing.lat, listing.lng]} icon={getMarkerIcon(listing)}>
-                <Popup minWidth={240}>
-                  <MapPopupCard listing={listing} onStartChat={onStartChat} />
-                </Popup>
-              </Marker>
-            )
-          ))}
-        </MapContainer>
-      </div>
-    </div>
-  );
+const MapEvents: React.FC<{
+  onBoundsChange: (bounds: L.LatLngBounds) => void;
+  onMoveStart: () => void;
+}> = ({ onBoundsChange, onMoveStart }) => {
+  const map = useMapEvents({
+    load: () => onBoundsChange(map.getBounds()),
+    moveend: () => onBoundsChange(map.getBounds()),
+    movestart: onMoveStart,
+  });
+  return null;
 };
-
 
 interface RentLandScreenProps {
   onStartChat: (details: ChatDetails) => void;
+  wishlist: number[];
+  onToggleWishlist: (id: number) => void;
 }
 
-const RentLandScreen: React.FC<RentLandScreenProps> = ({ onStartChat }) => {
-  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+const RentLandScreen: React.FC<RentLandScreenProps> = ({ onStartChat, wishlist, onToggleWishlist }) => {
   const [aiQuery, setAiQuery] = useState('');
   const [suitabilityResults, setSuitabilityResults] = useState<SuitabilityAnalysisResult[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+
+  const [searchBounds, setSearchBounds] = useState<L.LatLngBounds | null>(null);
+  const [mapMoved, setMapMoved] = useState(false);
+  const [selectedListingId, setSelectedListingId] = useState<number | null>(null);
+  
+  const mapRef = useRef<L.Map>(null);
+  const listContainerRef = useRef<HTMLDivElement>(null);
+  const listingRefs = useRef(new Map<number, HTMLDivElement | null>());
+
 
   const [filters, setFilters] = useState({
     soilType: '',
@@ -250,7 +216,7 @@ const RentLandScreen: React.FC<RentLandScreenProps> = ({ onStartChat }) => {
     setIsAnalyzing(true);
     setAnalysisError(null);
     try {
-      const results = await getLandSuitabilityAnalysis(aiQuery, mockLand);
+      const results = await getLandSuitabilityAnalysis(aiQuery, mockLandListings);
       setSuitabilityResults(results);
     } catch (error) {
       console.error(error);
@@ -263,7 +229,7 @@ const RentLandScreen: React.FC<RentLandScreenProps> = ({ onStartChat }) => {
   const aiTipOptions = ['Drought-resistant crops', 'Intercropping', 'Organic farming', 'Zero tillage'];
 
   const displayedLand = useMemo(() => {
-    let land = mockLand.filter(l => {
+    let land = mockLandListings.filter(l => {
       if (filters.soilType && l.soilType !== filters.soilType) return false;
       if (filters.landUse && l.landUse !== filters.landUse) return false;
       if (filters.waterSource) {
@@ -271,27 +237,58 @@ const RentLandScreen: React.FC<RentLandScreenProps> = ({ onStartChat }) => {
         if (l.waterSource !== waterSourceBool) return false;
       }
       if (filters.aiTip && (!l.aiTips || !l.aiTips.includes(filters.aiTip))) return false;
+      
+      if (searchBounds && l.lat && l.lng) {
+        return searchBounds.contains([l.lat, l.lng]);
+      }
+      
       return true;
     });
 
-    if (suitabilityResults.length > 0) {
-        const resultsMap = new Map(suitabilityResults.map(r => [r.id, r]));
-        let enrichedLand: DisplayListing[] = land.map(l => ({
+    // Always enrich the listings to ensure a consistent data structure.
+    // FIX: Explicitly typing the Map constructor's generic arguments to prevent incorrect type inference to 'unknown'.
+    const resultsMap = new Map<number, SuitabilityAnalysisResult>(suitabilityResults.map(r => [r.id, r]));
+    const enrichedLand: DisplayListing[] = land.map((l): DisplayListing => {
+        const result = resultsMap.get(l.id);
+        return {
             ...l,
-            suitabilityScore: resultsMap.get(l.id)?.suitabilityScore,
-            suitabilityReason: resultsMap.get(l.id)?.reason,
-        }));
-        
-        // Filter out low scores and sort by score
+            suitabilityScore: result?.suitabilityScore,
+            suitabilityReason: result?.reason,
+        };
+    });
+
+    if (suitabilityResults.length > 0) {
+        // If analysis was run, filter by score and sort.
         return enrichedLand
           .filter(l => (l.suitabilityScore ?? 0) >= 40)
           .sort((a, b) => (b.suitabilityScore ?? 0) - (a.suitabilityScore ?? 0));
-
     }
 
-    return land;
-  }, [filters, suitabilityResults]);
+    // Otherwise, return the enriched list without score-based filtering/sorting.
+    return enrichedLand;
+  }, [filters, suitabilityResults, searchBounds]);
   
+  const landLayers = useMemo(() => {
+    const layers: Record<string, DisplayListing[]> = {
+        Arable: [],
+        Grazing: [],
+        Commercial: [],
+        Other: []
+    };
+    for (const listing of displayedLand) {
+        if (listing.landUse === 'Arable') {
+            layers.Arable.push(listing);
+        } else if (listing.landUse === 'Grazing') {
+            layers.Grazing.push(listing);
+        } else if (listing.landUse === 'Commercial') {
+            layers.Commercial.push(listing);
+        } else {
+            layers.Other.push(listing);
+        }
+    }
+    return layers;
+  }, [displayedLand]);
+
   const clearFilters = () => {
     setFilters({ soilType: '', landUse: '', waterSource: '', aiTip: '' });
     setAiQuery('');
@@ -301,13 +298,48 @@ const RentLandScreen: React.FC<RentLandScreenProps> = ({ onStartChat }) => {
   
   const isAnyFilterActive = Object.values(filters).some(v => v !== '') || aiQuery !== '';
 
+  const ugandaCenter: [number, number] = [1.3733, 32.2903];
+  
+  useEffect(() => {
+    if (selectedListingId) {
+        const listing = displayedLand.find(l => l.id === selectedListingId);
+        if (listing?.lat && listing.lng && mapRef.current) {
+            mapRef.current.flyTo([listing.lat, listing.lng], 14, { animate: true, duration: 0.5 });
+        }
+    }
+  }, [selectedListingId, displayedLand]);
+
+  useEffect(() => {
+    if (selectedListingId && listContainerRef.current) {
+      const el = listingRefs.current.get(selectedListingId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [selectedListingId]);
+
+  const renderMarkers = (listings: DisplayListing[]) => {
+    return listings.map(listing => (
+        (listing.lat && listing.lng) && (
+        <Marker 
+            key={listing.id} 
+            position={[listing.lat, listing.lng]} 
+            icon={getMarkerIcon(listing, selectedListingId === listing.id)}
+            eventHandlers={{ click: () => setSelectedListingId(listing.id) }}
+        >
+            <Popup minWidth={240}>
+                <MapPopupCard listing={listing} onStartChat={onStartChat} />
+            </Popup>
+        </Marker>
+        )
+    ));
+  };
+
+
   return (
-    <div className="bg-background dark:bg-gray-900 min-h-full">
-      <div className="sticky top-0 bg-background/80 dark:bg-gray-900/80 backdrop-blur-sm z-10 p-4 border-b border-gray-200 dark:border-gray-700 space-y-3">
-        <div className="flex justify-between items-center">
-          <h1 className="font-poppins text-2xl text-text-primary dark:text-gray-100">Rent Land</h1>
-          <ViewModeToggle viewMode={viewMode} setViewMode={setViewMode} />
-        </div>
+    <div className="bg-background dark:bg-gray-900 h-full flex flex-col">
+      <div className="sticky top-0 bg-background/80 dark:bg-gray-900/80 backdrop-blur-sm z-20 p-4 border-b border-gray-200 dark:border-gray-700 space-y-3">
+        <h1 className="font-poppins text-2xl text-text-primary dark:text-gray-100">Rent Land</h1>
         
         <div className="flex items-center space-x-2">
             <div className="relative flex-grow">
@@ -335,7 +367,7 @@ const RentLandScreen: React.FC<RentLandScreenProps> = ({ onStartChat }) => {
             </button>
         </div>
 
-        <div className="flex items-center space-x-2 overflow-x-auto pb-1">
+        <div className="flex items-center space-x-2 overflow-x-auto pb-1 -mx-4 px-4">
             <FilterDropdown label="AI Farming Tips" options={aiTipOptions} value={filters.aiTip} onChange={(v) => handleFilterChange('aiTip', v)} icon="psychology" />
             <FilterDropdown label="Land Use" options={['Arable', 'Grazing', 'Commercial', 'Mixed-use']} value={filters.landUse} onChange={(v) => handleFilterChange('landUse', v)} />
             <FilterDropdown label="Water Source" options={['Yes', 'No']} value={filters.waterSource} onChange={(v) => handleFilterChange('waterSource', v)} />
@@ -344,29 +376,70 @@ const RentLandScreen: React.FC<RentLandScreenProps> = ({ onStartChat }) => {
         </div>
       </div>
       
-      {analysisError && <div className="m-4 p-3 bg-red-100 text-red-800 rounded-lg text-sm">{analysisError}</div>}
-
-      {viewMode === 'list' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
-          {displayedLand.length > 0 ? (
-            displayedLand.map(listing => <ListingCard 
-                key={listing.id} 
-                listing={listing} 
-                onStartChat={onStartChat} 
-                suitabilityScore={listing.suitabilityScore}
-                suitabilityReason={listing.suitabilityReason}
-            />)
-          ) : (
-            <div className="col-span-1 md:col-span-2 text-center py-10">
-              <span className="material-icons-outlined text-5xl text-gray-400 mb-2">search_off</span>
-              <p className="text-text-secondary dark:text-gray-400 font-semibold">No matching land found.</p>
-              <p className="text-sm text-text-secondary dark:text-gray-500">Try adjusting your filters or AI analysis.</p>
-            </div>
-          )}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="h-[45%] relative">
+            <MapContainer ref={mapRef} center={ugandaCenter} zoom={7} scrollWheelZoom={true} style={{ height: '100%', width: '100%', zIndex: 0 }}>
+                <LayersControl position="topright">
+                  <LayersControl.BaseLayer checked name="Map View">
+                    <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                  </LayersControl.BaseLayer>
+                  <LayersControl.Overlay checked name="Arable Land">
+                    <LayerGroup>{renderMarkers(landLayers.Arable)}</LayerGroup>
+                  </LayersControl.Overlay>
+                  <LayersControl.Overlay checked name="Grazing Land">
+                    <LayerGroup>{renderMarkers(landLayers.Grazing)}</LayerGroup>
+                  </LayersControl.Overlay>
+                  <LayersControl.Overlay checked name="Commercial Land">
+                    <LayerGroup>{renderMarkers(landLayers.Commercial)}</LayerGroup>
+                  </LayersControl.Overlay>
+                   <LayersControl.Overlay checked name="Other Land">
+                    <LayerGroup>{renderMarkers(landLayers.Other)}</LayerGroup>
+                  </LayersControl.Overlay>
+                </LayersControl>
+                <MapEvents onBoundsChange={setSearchBounds} onMoveStart={() => setMapMoved(true)} />
+            </MapContainer>
+             {mapMoved && <button onClick={() => { setMapMoved(false) }} className="absolute top-3 left-1/2 -translate-x-1/2 bg-surface dark:bg-gray-800 text-text-primary dark:text-gray-100 font-semibold px-4 py-2 rounded-full shadow-lg z-10 flex items-center space-x-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                <span className="material-icons-outlined text-base">search</span>
+                <span>Search this area</span>
+             </button>}
         </div>
-      ) : (
-        <MapView listings={displayedLand} onStartChat={onStartChat} />
-      )}
+        <div className="flex-1 flex flex-col min-h-0">
+            {analysisError && <div className="m-4 p-3 bg-red-100 text-red-800 rounded-lg text-sm">{analysisError}</div>}
+             <div className="p-2 border-b dark:border-gray-700">
+                <p className="text-sm font-semibold text-center text-text-secondary dark:text-gray-400">{displayedLand.length} properties found</p>
+            </div>
+            <div ref={listContainerRef} className="flex-1 overflow-y-auto p-4">
+                {displayedLand.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {displayedLand.map(listing => <ListingCard
+                            ref={node => {
+                                if (node) listingRefs.current.set(listing.id, node);
+                                else listingRefs.current.delete(listing.id);
+                            }}
+                            key={listing.id} 
+                            listing={listing} 
+                            onStartChat={onStartChat} 
+                            suitabilityScore={listing.suitabilityScore}
+                            suitabilityReason={listing.suitabilityReason}
+                            isSelected={selectedListingId === listing.id}
+                            onClick={() => setSelectedListingId(listing.id)}
+                            isInWishlist={wishlist.includes(listing.id)}
+                            onToggleWishlist={onToggleWishlist}
+                        />)}
+                    </div>
+                ) : (
+                    <div className="col-span-1 md:col-span-2 text-center py-10">
+                    <span className="material-icons-outlined text-5xl text-gray-400 mb-2">search_off</span>
+                    <p className="text-text-secondary dark:text-gray-400 font-semibold">No matching land found.</p>
+                    <p className="text-sm text-text-secondary dark:text-gray-500">Try adjusting your filters or moving the map.</p>
+                    </div>
+                )}
+            </div>
+        </div>
+      </div>
     </div>
   );
 };

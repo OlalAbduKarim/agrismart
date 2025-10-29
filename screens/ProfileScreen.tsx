@@ -6,6 +6,7 @@ interface ProfileScreenProps {
   onEditProfile: () => void;
   theme: string;
   onToggleTheme: () => void;
+  onViewWishlist: () => void;
 }
 
 const ProfileMenuItem: React.FC<{icon: string, label: string, onClick?: () => void}> = ({ icon, label, onClick }) => (
@@ -31,7 +32,7 @@ const ThemeToggle: React.FC<{ theme: string; onToggle: () => void; }> = ({ theme
 );
 
 
-const ProfileScreen: React.FC<ProfileScreenProps> = ({ profile, onLogout, onEditProfile, theme, onToggleTheme }) => {
+const ProfileScreen: React.FC<ProfileScreenProps> = ({ profile, onLogout, onEditProfile, theme, onToggleTheme, onViewWishlist }) => {
   return (
     <div className="bg-background dark:bg-gray-900 min-h-full">
       <div className="p-4 bg-surface dark:bg-gray-800 flex flex-col items-center pb-6 border-b dark:border-gray-700">
@@ -43,6 +44,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ profile, onLogout, onEdit
       <div className="py-4">
         <div className="bg-surface dark:bg-gray-800 rounded-lg mx-4 shadow-sm">
             <ProfileMenuItem icon="account_circle" label="Edit Profile" onClick={onEditProfile} />
+            <div className="border-t border-gray-100 dark:border-gray-700 mx-4"></div>
+            <ProfileMenuItem icon="favorite_border" label="My Wishlist" onClick={onViewWishlist} />
             <div className="border-t border-gray-100 dark:border-gray-700 mx-4"></div>
             <ThemeToggle theme={theme} onToggle={onToggleTheme} />
             <div className="border-t border-gray-100 dark:border-gray-700 mx-4"></div>
