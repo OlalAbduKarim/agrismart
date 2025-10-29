@@ -1,13 +1,22 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import type { Listing } from "../types";
 
-const API_KEY = process.env.API_KEY;
 let ai: GoogleGenAI | null = null;
 
-if (API_KEY) {
-  ai = new GoogleGenAI({ apiKey: API_KEY });
-} else {
-  console.warn("API_KEY environment variable not set. AI Guide will not function.");
+try {
+  // This might fail in environments where `process` is not defined.
+  const API_KEY = process.env.API_KEY;
+
+  if (API_KEY) {
+    ai = new GoogleGenAI({ apiKey: API_KEY });
+  } else {
+    console.warn("API_KEY environment variable not set. AI Guide will not function.");
+  }
+} catch (error) {
+    console.error(
+    "Could not initialize AI service. This might be due to a missing API key or an environment where `process.env` is not available.",
+    error
+  );
 }
 
 
